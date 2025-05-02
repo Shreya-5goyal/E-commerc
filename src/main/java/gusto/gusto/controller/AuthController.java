@@ -160,6 +160,6 @@ public class AuthController {
       ResponseCookie cookie=jwtUtils.getCleanJwtCookie();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,
                         cookie.toString())
-                .body(new MessageResponse("u have been signed out"));
+                .body(new MessageResponse("u have  signed out"));
     }
 }
