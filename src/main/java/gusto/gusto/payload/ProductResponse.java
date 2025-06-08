@@ -16,4 +16,13 @@ public class ProductResponse {
     private Long totalElement;
     private Integer totalPages;
     private boolean lastPage;
+
+    public Long getTotalElement() {
+        return totalElement;
+    }
+
+
+
+    public void setTotalElements(long totalElements) {
+    }
 }
