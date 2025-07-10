@@ -143,7 +143,7 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
 
         if(products.isEmpty()){
-            throw new APIException("Product not found with keyword: " + keyword);
+            throw new APIException("Productgit log  not found with keyword: " + keyword);
         }
 
         ProductResponse productResponse = new ProductResponse();
