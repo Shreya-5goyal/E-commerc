@@ -18,26 +18,23 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long productId;
+
     @NotBlank
-    @Size(min=5,message = "length should at least be 50")
-    private String description;
-    @NotBlank
-    @Size(min=5,message = "length should at least be 5")
+    @Size(min = 3, message = "Product name must contain atleast 3 characters")
     private String productName;
-    @NotBlank
-    private Integer quantity;
-    @NotBlank
-    private double price;
-    @NotBlank
     private String image;
-@NotBlank
-    private double discount;
+
     @NotBlank
-    private  double specialPrice;
+    @Size(min = 6, message = "Product description must contain atleast 6 characters")
+    private String description;
+    private Integer quantity;
+    private double price;
+    private double discount;
+    private double specialPrice;
 
     @ManyToOne
-    @JoinColumn(name ="category_id")
-  private category category;
+    @JoinColumn(name = "category_id")
+    private category category;
     @ManyToOne
     @JoinColumn(name="seller_id")
     private User user;
