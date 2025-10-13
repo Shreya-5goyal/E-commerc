@@ -2,7 +2,6 @@ package gusto.gusto.Service;
 
 import gusto.gusto.model.User;
 import gusto.gusto.payload.AddressDTO;
-import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,4 +13,15 @@ public interface AddressService {
 
 
     List<AddressDTO> getAddresses();
+
+    AddressDTO getAddressesById(Long addressId);
+
+
+    List<AddressDTO> getAddressesByUser(User user);
+
+    AddressDTO updateAddress(Long addressId, AddressDTO addressDTO);
+
+    String deleteAddress(Long addressId);
+
+    //AddressDTO updateAddress(Long addressId, AddressDTO addressDTO);
 }
