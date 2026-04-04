@@ -55,7 +55,7 @@ public class ProductController {
                                                                 @RequestParam(name = "sortBy", defaultValue = AppConstant4.SORT_PRODUCTS_BY, required = false) String sortBy,
                                                                 @RequestParam(name = "sortOrder", defaultValue = AppConstant4.SORT_DIR, required = false) String sortOrder){
         ProductResponse productResponse = productService.searchProductByKeyword(keyword, pageNumber, pageSize, sortBy, sortOrder);
-        return new ResponseEntity<>(productResponse, HttpStatus.FOUND);
+        return new ResponseEntity<>(productResponse, HttpStatus.OK);
     }
 
     @PutMapping("/admin/products/{productId}")
@@ -76,5 +76,23 @@ public class ProductController {
                                                          @RequestParam("image")MultipartFile image) throws IOException {
         ProductDTO updatedProduct = productService.updateProductImage(productId, image);
         return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
+    }
+
+    @GetMapping("/public/products/{productId}")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long productId){
+        ProductDTO productDTO = productService.getProductById(productId);
+        return new ResponseEntity<>(productDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/public/products/new")
+    public ResponseEntity<ProductResponse> getNewArrivals(@RequestParam(defaultValue = "8") Integer pageSize) {
+        ProductResponse response = productService.getNewArrivals(pageSize);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/public/products/deals")
+    public ResponseEntity<ProductResponse> getProductDeals(@RequestParam(defaultValue = "8") Integer pageSize) {
+        ProductResponse response = productService.getProductDeals(pageSize);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

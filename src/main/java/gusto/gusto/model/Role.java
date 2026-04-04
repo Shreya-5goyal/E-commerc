@@ -7,11 +7,14 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 @Entity
-@NoArgsConstructor
-@Data
-@AllArgsConstructor
-@Table(name = "Role",uniqueConstraints = {@UniqueConstraint(columnNames = "role_name")})
 public class Role {
+    public Role() {}
+
+    public Integer getRoleId() { return roleId; }
+    public void setRoleId(Integer roleId) { this.roleId = roleId; }
+
+    public AppRole getRoleName() { return roleName; }
+    public void setRoleName(AppRole roleName) { this.roleName = roleName; }
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name="role_id")

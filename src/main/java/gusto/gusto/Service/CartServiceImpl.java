@@ -36,6 +36,7 @@ public class CartServiceImpl implements CartService{
     @Autowired
     ModelMapper modelMapper;
 
+    @Transactional
     @Override
     public CartDTO addProductToCart(Long productId, Integer quantity) {
         Cart cart  = createCart();
@@ -89,6 +90,7 @@ public class CartServiceImpl implements CartService{
         return cartDTO;
     }
 
+    @Transactional
     @Override
     public List<CartDTO> getAllCarts() {
         List<Cart> carts = cartRepository.findAll();
@@ -106,16 +108,19 @@ public class CartServiceImpl implements CartService{
 return cartDTOS;
     }
 
+    @Transactional
     public CartDTO getCart(String emailId, Long cartId) {
         Cart cart = cartRepository.findCartByEmailAndCartId(emailId, cartId);
         if (cart == null){
             throw new ResourseNotFoundException("Cart", "cartId", cartId);
         }
         CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-        cart.getCartItems().forEach(c ->
-                c.getProduct().setQuantity(c.getQuantity()));
         List<ProductDTO> products = cart.getCartItems().stream()
-                .map(p -> modelMapper.map(p.getProduct(), ProductDTO.class))
+                .map(p -> {
+                    ProductDTO dto = modelMapper.map(p.getProduct(), ProductDTO.class);
+                    dto.setQuantity(p.getQuantity());
+                    return dto;
+                })
                 .toList();
         cartDTO.setProducts(products);
         return cartDTO;

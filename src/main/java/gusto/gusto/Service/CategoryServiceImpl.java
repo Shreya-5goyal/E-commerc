@@ -17,10 +17,10 @@ import java.util.List;
 
 @Service
 public class CategoryServiceImpl implements CategoryService{
-@Autowired
+    @Autowired
     CategoryRepo categoryRepo;
-@Autowired
-private ModelMapper modelMapper;
+    @Autowired
+    private ModelMapper modelMapper;
 
     public DTOResponse getCategories(int pageNumber, int pageSize, String sortOrder, String sortBy) {
         Sort sortByOrder=sortOrder.equalsIgnoreCase("asc")?Sort.by(sortBy).ascending():Sort.by(sortBy).descending();
@@ -28,7 +28,7 @@ private ModelMapper modelMapper;
         Page<category> categoryPage=categoryRepo.findAll(pageDetails);
         List<category> categories=categoryPage.getContent();
         if(categories.isEmpty())
-            throw new APIException("resource is not added till now  ");
+            return new DTOResponse();
         List<CategoryDTO> categoryDTOS=categories.stream().map(category -> modelMapper.map(category,CategoryDTO.class)).toList();
         DTOResponse dtoResponse=new DTOResponse();
         dtoResponse.setContent(categoryDTOS);
@@ -43,18 +43,18 @@ private ModelMapper modelMapper;
     @Override
     public CategoryDTO createCategory(CategoryDTO categoryDTO) {
         category Category=modelMapper.map(categoryDTO,category.class);
-      category savedCategory=categoryRepo.findByCategoryName(Category.getCategoryName());
+        category savedCategory=categoryRepo.findByCategoryName(Category.getCategoryName());
 
-     category Cat= categoryRepo.save(Category);
-     CategoryDTO categoryDTO1=modelMapper.map(Cat,CategoryDTO.class);
-     return categoryDTO1;
+        category Cat= categoryRepo.save(Category);
+        CategoryDTO categoryDTO1=modelMapper.map(Cat,CategoryDTO.class);
+        return categoryDTO1;
     }
 
     @Override
     public CategoryDTO deleteCategoryById(Long id) {
-    category categories=categoryRepo.findById(id).orElseThrow(()-> new ResourseNotFoundException("categrory","categoryId",id));
-    categoryRepo.deleteById(id);
-     return modelMapper.map(categories,CategoryDTO.class);
+        category categories=categoryRepo.findById(id).orElseThrow(()-> new ResourseNotFoundException("category","categoryId",id));
+        categoryRepo.deleteById(id);
+        return modelMapper.map(categories,CategoryDTO.class);
     }
 
     public CategoryDTO update(CategoryDTO categoryDTO, Long id) {

@@ -14,5 +14,8 @@ public interface ProductRepo extends JpaRepository<Product,Long> {
 
    Page<Product> findByCategoryOrderByPriceAsc(category category, Pageable pageDetails);
 
-   Page<Product> findByProductNameLikeIgnoreCase(String keyword, Pageable pageDetails);
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Product p WHERE LOWER(p.productName) LIKE LOWER(CONCAT('%', ?1, '%')) OR LOWER(p.category.categoryName) LIKE LOWER(CONCAT('%', ?1, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', ?1, '%'))")
+    Page<Product> findByProductNameLikeIgnoreCase(String keyword, Pageable pageDetails);
+
+   Page<Product> findByDiscountGreaterThan(double discount, Pageable pageable);
 }

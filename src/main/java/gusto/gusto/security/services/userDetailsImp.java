@@ -15,10 +15,16 @@ import java.util.stream.Collectors;
 
 
 
-@NoArgsConstructor
-@Data
-@AllArgsConstructor
 public class userDetailsImp implements UserDetails {
+    public userDetailsImp() {}
+
+    public userDetailsImp(Long id, String username, String email, String password, Collection<? extends GrantedAuthority> authorities) {
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.authorities = authorities;
+    }
     private static final long serialVersionUID = 1L;
 
     private Long id;
