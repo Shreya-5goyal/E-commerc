@@ -47,32 +47,21 @@ public class CartServiceImpl implements CartService{
         CartItem cartItem = cartItemRepository.findCartItemByProductIdAndCartId(cart.getCartId(), productId);
 
         if (cartItem != null) {
-            throw new APIException("Product " + product.getProductName() + " already exists in the cart");
+            cartItem.setQuantity(cartItem.getQuantity() + quantity);
+            cartItem.setDiscount(product.getDiscount());
+            cartItem.setProductPrice(product.getSpecialPrice());
+            cartItemRepository.save(cartItem);
+        } else {
+            CartItem newCartItem = new CartItem();
+            newCartItem.setProduct(product);
+            newCartItem.setCart(cart);
+            newCartItem.setQuantity(quantity);
+            newCartItem.setDiscount(product.getDiscount());
+            newCartItem.setProductPrice(product.getSpecialPrice());
+            cartItemRepository.save(newCartItem);
         }
-
-        if (product.getQuantity() == 0) {
-            throw new APIException(product.getProductName() + " is not available");
-        }
-
-        if (product.getQuantity() < quantity) {
-            throw new APIException("Please, make an order of the " + product.getProductName()
-                    + " less than or equal to the quantity " + product.getQuantity() + ".");
-        }
-
-        CartItem newCartItem = new CartItem();
-
-        newCartItem.setProduct(product);
-        newCartItem.setCart(cart);
-        newCartItem.setQuantity(quantity);
-        newCartItem.setDiscount(product.getDiscount());
-        newCartItem.setProductPrice(product.getSpecialPrice());
-
-        cartItemRepository.save(newCartItem);
-
-        product.setQuantity(product.getQuantity());
 
         cart.setTotalPrice(cart.getTotalPrice() + (product.getSpecialPrice() * quantity));
-
         cartRepository.save(cart);
 
         CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);

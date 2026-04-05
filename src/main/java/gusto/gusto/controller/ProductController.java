@@ -95,4 +95,17 @@ public class ProductController {
         ProductResponse response = productService.getProductDeals(pageSize);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @GetMapping("/public/products/filter")
+    public ResponseEntity<ProductResponse> searchFilteredProducts(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") Double minPrice,
+            @RequestParam(defaultValue = "1000000") Double maxPrice,
+            @RequestParam(defaultValue = AppConstant4.PAGE_NUMBER) Integer pageNumber,
+            @RequestParam(defaultValue = AppConstant4.PAGE_SIZE) Integer pageSize,
+            @RequestParam(defaultValue = AppConstant4.SORT_PRODUCTS_BY) String sortBy,
+            @RequestParam(defaultValue = AppConstant4.SORT_DIR) String sortOrder) {
+        ProductResponse response = productService.searchFilteredProducts(keyword, minPrice, maxPrice, pageNumber, pageSize, sortBy, sortOrder);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 }

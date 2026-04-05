@@ -42,12 +42,14 @@ public class CategoryServiceImpl implements CategoryService{
 
     @Override
     public CategoryDTO createCategory(CategoryDTO categoryDTO) {
-        category Category=modelMapper.map(categoryDTO,category.class);
-        category savedCategory=categoryRepo.findByCategoryName(Category.getCategoryName());
+        category Category = modelMapper.map(categoryDTO, category.class);
+        
+        java.util.Optional<category> savedCategory = categoryRepo.findByCategoryName(Category.getCategoryName());
+        if(savedCategory.isPresent())
+            throw new APIException("Category with same name is already present.");
 
-        category Cat= categoryRepo.save(Category);
-        CategoryDTO categoryDTO1=modelMapper.map(Cat,CategoryDTO.class);
-        return categoryDTO1;
+        category Cat = categoryRepo.save(Category);
+        return modelMapper.map(Cat, CategoryDTO.class);
     }
 
     @Override
@@ -58,16 +60,15 @@ public class CategoryServiceImpl implements CategoryService{
     }
 
     public CategoryDTO update(CategoryDTO categoryDTO, Long id) {
-        category Category=modelMapper.map(categoryDTO,category.class);
-        category categories=categoryRepo.findById(id).orElseThrow(()-> new ResourseNotFoundException("category","categoryId",id));
-        category saved=categoryRepo.findByCategoryName(Category.getCategoryName());
-        if(saved!=null)
-            throw new APIException("category with same name is already present ");
-        Category.setCategoryId(id);
-        saved=categoryRepo.save(Category);
-        CategoryDTO ss=modelMapper.map(saved,CategoryDTO.class);
-        return  ss;
+        category categories = categoryRepo.findById(id).orElseThrow(()-> new ResourseNotFoundException("category","categoryId",id));
+        
+        java.util.Optional<category> existingCategory = categoryRepo.findByCategoryName(categoryDTO.getCategoryName());
+        if(existingCategory.isPresent() && !existingCategory.get().getCategoryId().equals(id))
+            throw new APIException("Category with same name is already present.");
 
+        categories.setCategoryName(categoryDTO.getCategoryName());
+        category saved = categoryRepo.save(categories);
+        return modelMapper.map(saved, CategoryDTO.class);
     }
 
 

@@ -1,224 +1,137 @@
-import { useEffect, useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import ProductCard from '../components/ProductCard';
-import { motion } from 'framer-motion';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Filter, ChevronDown, ShoppingBag, X, SlidersHorizontal, Star } from 'lucide-react';
 
 const SearchResults = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const keyword = searchParams.get('keyword') || '';
+    
     const [products, setProducts] = useState([]);
-    const [pageNumber, setPageNumber] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [error, setError] = useState(null);
-    const [sortBy, setSortBy] = useState('default');
-    const [priceMin, setPriceMin] = useState('');
-    const [priceMax, setPriceMax] = useState('');
-    const location = useLocation();
+    
+    // FILTERS (AJIO Style)
+    const [priceRange, setPriceRange] = useState(200000);
+    const [sortBy, setSortBy] = useState('specialPrice');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [showMobileFilter, setShowMobileFilter] = useState(false);
 
-    const query = new URLSearchParams(location.search);
-    const keyword = query.get('keyword') || '';
-
-    const fetchResults = async (page = 0, append = false) => {
-        if (page === 0) setLoading(true);
-        else setLoadingMore(true);
-        
-        setError(null);
+    const fetchAll = useCallback(async () => {
+        setLoading(true);
         try {
-            let response;
-            const size = 20;
-            // Map our local sort state to API sort parameters
-            let sortApi = 'productId';
-            let orderApi = 'asc';
-            
-            if (sortBy === 'price-asc') { sortApi = 'price'; orderApi = 'asc'; }
-            else if (sortBy === 'price-desc') { sortApi = 'price'; orderApi = 'desc'; }
-            else if (sortBy === 'name-asc') { sortApi = 'productName'; orderApi = 'asc'; }
-
-            if (keyword.trim() === '') {
-                response = await api.get(`/public/products?pageNumber=${page}&pageSize=${size}&sortBy=${sortApi}&sortOrder=${orderApi}`);
-            } else {
-                response = await api.get(`/public/products/keyword/${keyword}?pageNumber=${page}&pageSize=${size}&sortBy=${sortApi}&sortOrder=${orderApi}`);
-            }
-            
-            const newItems = response.data.content || [];
-            const filteredItems = newItems.filter(p => {
-                const pPrice = p.specialPrice || p.price;
-                if (priceMin && pPrice < Number(priceMin)) return false;
-                if (priceMax && pPrice > Number(priceMax)) return false;
-                return true;
+            // New Filtered Endpoint
+            const res = await api.get(`/public/products/filter`, {
+                params: {
+                    keyword: keyword,
+                    minPrice: 0,
+                    maxPrice: priceRange,
+                    sortBy: sortBy,
+                    sortOrder: sortOrder,
+                    pageSize: 24
+                }
             });
-
-            setProducts(prev => append ? [...prev, ...filteredItems] : filteredItems);
-            setTotalPages(response.data.totalPages || 1);
-            setPageNumber(page);
+            
+            const catRes = await api.get('/public/categories');
+            
+            setProducts(res.data.content || []);
+            setCategories(catRes.data.content || []);
         } catch (err) {
-            console.error(err);
-            if (err.response?.status !== 404) {
-                setError('An error occurred while fetching products.');
-            } else if (page === 0) {
-                setProducts([]);
-            }
+            console.error('Search error', err);
         } finally {
             setLoading(false);
-            setLoadingMore(false);
         }
-    };
+    }, [keyword, priceRange, sortBy, sortOrder]);
 
     useEffect(() => {
-        fetchResults(0, false);
-    }, [keyword, sortBy]); // Refetch when keyword or sort changes
-
-    const handleLoadMore = () => {
-        if (pageNumber < totalPages - 1) {
-            fetchResults(pageNumber + 1, true);
-        }
-    };
-
-    const applyFilters = () => {
-        fetchResults(0, false);
-    };
-
-    const clearFilters = () => {
-        setPriceMin('');
-        setPriceMax('');
-        setSortBy('default');
-        // fetchResults will trigger via sortBy change
-    };
-
-    if (loading) return (
-        <div className="loading-wrapper">
-            <div className="spinner"></div>
-            <p>Searching for items…</p>
-        </div>
-    );
+        fetchAll();
+    }, [fetchAll]);
 
     return (
-        <div className="container" style={{ padding: '32px 0' }}>
-            {/* Header */}
-            <div style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <Search size={20} color="var(--text-muted)" />
-                    <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0 }}>
-                        {keyword ? `Results for "${keyword}"` : 'All Premium Products'}
-                    </h2>
-                </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                    Showing {products.length} of our expansive collection
-                </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
-                {/* Sidebar Filters */}
-                <div style={{
-                    width: 240,
-                    flexShrink: 0,
-                    background: 'var(--surface)',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)',
-                    padding: 20,
-                    position: 'sticky',
-                    top: 90,
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '0.95rem', margin: 0 }}>
-                            <SlidersHorizontal size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                            Filters
-                        </h3>
-                        {(priceMin || priceMax || sortBy !== 'default') && (
-                            <button onClick={clearFilters} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--danger)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
-                                <X size={12} /> Clear
-                            </button>
-                        )}
+        <div style={{ background: '#fff', minHeight: '100vh', paddingTop: 140 }}>
+            <div className="container">
+                
+                {/* ── AJIO TOP BAR ── */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, borderBottom: '1px solid #eee', paddingBottom: 20 }}>
+                    <div>
+                        <h1 style={{ fontSize: 20, fontWeight: 800, textTransform: 'uppercase' }}>{keyword ? `Results for "${keyword}"` : 'The Collection'}</h1>
+                        <p style={{ color: '#999', fontSize: 12, marginTop: 4 }}>{products.length} Items found</p>
                     </div>
-
-                    <div style={{ marginBottom: 20 }}>
-                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 10 }}>Sort By</label>
-                        <select
-                            value={sortBy}
-                            onChange={e => setSortBy(e.target.value)}
-                            className="form-control"
-                            style={{ fontSize: '0.875rem' }}
-                        >
-                            <option value="default">Newest First</option>
-                            <option value="price-asc">Price: Low to High</option>
-                            <option value="price-desc">Price: High to Low</option>
-                            <option value="name-asc">Name: A to Z</option>
-                        </select>
-                    </div>
-
-                    <div style={{ marginBottom: 20 }}>
-                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 10 }}>Price Range (₹)</label>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Min"
-                                value={priceMin}
-                                onChange={e => setPriceMin(e.target.value)}
-                                style={{ fontSize: '0.85rem' }}
-                            />
-                            <span style={{ color: 'var(--text-muted)' }}>–</span>
-                            <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Max"
-                                value={priceMax}
-                                onChange={e => setPriceMax(e.target.value)}
-                                style={{ fontSize: '0.85rem' }}
-                            />
+                    
+                    <div style={{ display: 'flex', gap: 24 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#666' }}>SORT BY:</span>
+                            <select 
+                                value={`${sortBy}-${sortOrder}`} 
+                                onChange={e => {
+                                    const [b, o] = e.target.value.split('-');
+                                    setSortBy(b); setSortOrder(o);
+                                }}
+                                style={{ border: 'none', background: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer', outline: 'none' }}
+                            >
+                                <option value="specialPrice-asc">Price (Lowest)</option>
+                                <option value="specialPrice-desc">Price (Highest)</option>
+                                <option value="rating-desc">Customer Rating</option>
+                                <option value="productId-desc">New Arrivals</option>
+                            </select>
                         </div>
+                        <button onClick={() => setShowMobileFilter(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}><SlidersHorizontal size={14} /> FILTERS</button>
                     </div>
-
-                    <button
-                        className="btn btn-secondary"
-                        style={{ width: '100%' }}
-                        onClick={applyFilters}
-                    >
-                        Apply Filters
-                    </button>
                 </div>
 
-                {/* Products */}
-                <div style={{ flex: 1 }}>
-                    {error && <div className="alert alert-error">{error}</div>}
-
-                    {products.length === 0 ? (
-                        <div className="empty-state animate-in">
-                            <Search size={64} />
-                            <h3>No products found</h3>
-                            <p>Try a different keyword or check your filters.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 60 }}>
+                    
+                    {/* ── SIDEBAR FILTERS ── */}
+                    <aside className="desktop-filters">
+                        <div style={{ marginBottom: 40 }}>
+                            <h4 style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', marginBottom: 20 }}>Refine By Price</h4>
+                            <input 
+                                type="range" min="0" max="200000" step="5000"
+                                value={priceRange} onChange={e => setPriceRange(Number(e.target.value))} 
+                                style={{ width: '100%', accentColor: '#111' }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 10, fontWeight: 700 }}>
+                                <span>₹0</span>
+                                <span>₹{priceRange.toLocaleString()}</span>
+                            </div>
                         </div>
-                    ) : (
-                        <>
-                            <div className="product-grid">
-                                {products.map((product, index) => (
-                                    <motion.div
-                                        key={product.productId}
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.35, delay: (index % 20) * 0.02 }}
+
+                        <div style={{ marginBottom: 40 }}>
+                            <h4 style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', marginBottom: 20 }}>Categories</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {categories.map(c => (
+                                    <Link 
+                                        key={c.categoryId} to={`/search?keyword=${c.categoryName}`}
+                                        style={{ fontSize: 13, color: '#555', fontWeight: 500, transition: '0.2s' }}
                                     >
-                                        <ProductCard product={product} />
-                                    </motion.div>
+                                        {c.categoryName} <span style={{ fontSize: 10, opacity: 0.5 }}>(12)</span>
+                                    </Link>
                                 ))}
                             </div>
-                            
-                            {pageNumber < totalPages - 1 && (
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 48 }}>
-                                    <button 
-                                        className="btn btn-primary" 
-                                        onClick={handleLoadMore}
-                                        disabled={loadingMore}
-                                        style={{ padding: '12px 40px' }}
-                                    >
-                                        {loadingMore ? 'Loading more products…' : 'Load More Products'}
-                                    </button>
-                                </div>
-                            )}
-                        </>
-                    )}
+                        </div>
+                    </aside>
+
+                    {/* ── PRODUCT GRID ── */}
+                    <div>
+                        {loading ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24 }}>
+                                {[...Array(8)].map((_, i) => <SkeletonLoader key={i} />)}
+                            </div>
+                        ) : products.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '100px 0', border: '1px dashed #ddd', borderRadius: 12 }}>
+                                <ShoppingBag size={48} style={{ opacity: 0.1, marginBottom: 24 }} />
+                                <h3>We couldn't find matches.</h3>
+                                <button onClick={() => { setPriceRange(200000); }} style={{ color: '#ff905a', fontSize: 12, marginTop: 12, fontWeight: 800 }}>CLEAR ALL FILTERS</button>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24 }}>
+                                {products.map(p => <ProductCard key={p.productId} product={p} />)}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

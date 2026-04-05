@@ -58,8 +58,9 @@ public class ProductServiceImpl implements ProductService {
 
         if (isProductNotPresent) {
             Product product = modelMapper.map(productDTO, Product.class);
-            product.setImage("default.png");
+            product.setImageUrl(productDTO.getImageUrl());
             product.setCategory(category);
+            product.setBrand(productDTO.getBrand());
             double specialPrice = product.getPrice() -
                     ((product.getDiscount() * 0.01) * product.getPrice());
             product.setSpecialPrice(specialPrice);
@@ -105,7 +106,7 @@ public class ProductServiceImpl implements ProductService {
                 : Sort.by(sortBy).descending();
 
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
-        Page<Product> pageProducts = productRepository.findByProductNameLikeIgnoreCase(keyword, pageDetails);
+        Page<Product> pageProducts = productRepository.findByProductNameContainingIgnoreCase(keyword, pageDetails);
 
         return convertToProductResponse(pageProducts);
     }
@@ -121,8 +122,9 @@ public class ProductServiceImpl implements ProductService {
         productFromDb.setDescription(product.getDescription());
         productFromDb.setQuantity(product.getQuantity());
         productFromDb.setDiscount(product.getDiscount());
-        productFromDb.setPrice(product.getPrice());
         productFromDb.setSpecialPrice(product.getSpecialPrice());
+        productFromDb.setImageUrl(product.getImageUrl());
+        productFromDb.setBrand(product.getBrand());
 
         Product savedProduct = productRepository.save(productFromDb);
 
@@ -170,6 +172,18 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse getProductDeals(Integer pageSize) {
         Pageable pageable = PageRequest.of(0, pageSize);
         Page<Product> pageProducts = productRepository.findByDiscountGreaterThan(1.0, pageable);
+        return convertToProductResponse(pageProducts);
+    }
+
+    @Override
+    public ProductResponse searchFilteredProducts(String keyword, Double minPrice, Double maxPrice, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Page<Product> pageProducts = productRepository.findFilteredProducts(keyword, minPrice, maxPrice, pageDetails);
+
         return convertToProductResponse(pageProducts);
     }
 

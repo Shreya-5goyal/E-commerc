@@ -59,9 +59,14 @@ const Cart = () => {
                                 {/* Image */}
                                 <Link to={`/product/${product.productId}`}>
                                     <img
-                                        src={product.image ? `/api/images/${product.image}` : 'https://placehold.co/100x100/f8fafc/94a3b8?text=Img'}
+                                        src={
+                                            product.image?.startsWith('http') 
+                                            ? (product.image.includes('unsplash') ? `https://picsum.photos/seed/${product.productId || 123}/120/120` : product.image) 
+                                            : `/api/images/${product.image || 'placeholder.jpg'}`
+                                        }
                                         alt={product.productName}
                                         style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 8, background: 'var(--surface-3)', padding: 8 }}
+                                        onError={(e) => { e.target.onerror = null; e.target.src = `https://picsum.photos/seed/${product.productId || 404}/120/120`; }}
                                     />
                                 </Link>
 

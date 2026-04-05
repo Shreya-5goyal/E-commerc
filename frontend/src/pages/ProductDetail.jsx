@@ -4,26 +4,10 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { ShoppingCart, Heart, ArrowLeft, Star, Send } from 'lucide-react';
-
-const StarRating = ({ rating }) => {
-    const full = Math.round(rating || 0);
-    return (
-        <span className="stars" style={{ fontSize: '1.1rem' }}>
-            {[1, 2, 3, 4, 5].map(i => <span key={i}>{i <= full ? '★' : '☆'}</span>)}
-        </span>
-    );
-};
-
-const StarInput = ({ value, onChange }) => (
-    <div className="star-input">
-        {[1, 2, 3, 4, 5].map(i => (
-            <button key={i} type="button" onClick={() => onChange(i)} id={`star-${i}`}>
-                <span style={{ color: i <= value ? '#f59e0b' : '#cbd5e1' }}>★</span>
-            </button>
-        ))}
-    </div>
-);
+import SkeletonLoader from '../components/SkeletonLoader';
+import ProductCard from '../components/ProductCard';
+import { ShoppingBag, Heart, Star, ShieldCheck, Globe, RotateCcw, Percent, Gift, ChevronDown, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -33,277 +17,175 @@ const ProductDetail = () => {
     const { addToWishlist, removeFromWishlist, isWishlisted } = useWishlist();
 
     const [product, setProduct] = useState(null);
-    const [reviews, setReviews] = useState([]);
+    const [related, setRelated] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
     const [toast, setToast] = useState(null);
-
-    // Review form
-    const [rating, setRating] = useState(5);
-    const [comment, setComment] = useState('');
-    const [submittingReview, setSubmittingReview] = useState(false);
+    const [selectedSize, setSelectedSize] = useState('M');
+    const [selectedImg, setSelectedImg] = useState(0);
 
     const wishlisted = isWishlisted(Number(id));
 
-    const showToast = (msg, type = 'success') => {
-        setToast({ msg, type });
-        setTimeout(() => setToast(null), 3000);
-    };
-
     useEffect(() => {
         const fetchAll = async () => {
+            setLoading(true);
             try {
                 const [prodRes, revRes] = await Promise.all([
                     api.get(`/public/products/${id}`),
                     api.get(`/public/products/${id}/reviews`)
                 ]);
                 setProduct(prodRes.data);
-                setReviews(revRes.data || []);
+                
+                const relRes = await api.get(`/public/categories/${prodRes.data.category?.categoryId}/products?pageSize=4`);
+                setRelated(relRes.data.content?.filter(p => p.productId !== Number(id)) || []);
             } catch {
-                setError('Product not found.');
+                console.error("Fetch detail error");
             } finally {
                 setLoading(false);
             }
         };
         fetchAll();
+        window.scrollTo(0,0);
     }, [id]);
 
     const handleAddToCart = async () => {
         if (!user) { navigate('/login'); return; }
         setAdding(true);
-        const res = await addToCart(id, quantity);
-        if (res.success) showToast('Added to cart!');
-        else showToast(res.message, 'error');
-        setAdding(false);
-    };
-
-    const handleBuyNow = async () => {
-        if (!user) { navigate('/login'); return; }
-        setAdding(true);
-        const res = await addToCart(id, quantity);
-        setAdding(false);
-        if (res.success) navigate('/checkout');
-        else showToast(res.message, 'error');
-    };
-
-    const handleWishlist = async () => {
-        if (!user) { navigate('/login'); return; }
-        if (wishlisted) await removeFromWishlist(Number(id));
-        else await addToWishlist(Number(id));
-        showToast(wishlisted ? 'Removed from wishlist' : 'Added to wishlist!');
-    };
-
-    const handleReviewSubmit = async (e) => {
-        e.preventDefault();
-        if (!user) { navigate('/login'); return; }
-        if (!comment.trim()) { showToast('Please write a comment.', 'error'); return; }
-        setSubmittingReview(true);
-        try {
-            await api.post(`/products/${id}/reviews`, { rating, comment });
-            const revRes = await api.get(`/public/products/${id}/reviews`);
-            setReviews(revRes.data || []);
-            setComment('');
-            setRating(5);
-            showToast('Review submitted!');
-        } catch (err) {
-            showToast(err.response?.data?.message || 'Could not submit review.', 'error');
-        } finally {
-            setSubmittingReview(false);
+        const res = await addToCart(id, 1);
+        if (res.success) {
+            setToast('Item added to your bag.');
+            setTimeout(() => setToast(null), 3000);
         }
+        setAdding(false);
     };
 
-    if (loading) return (
-        <div className="loading-wrapper"><div className="spinner"></div><p>Loading product…</p></div>
-    );
-    if (error) return (
-        <div className="container" style={{ padding: '60px 0', textAlign: 'center' }}>
-            <p className="text-danger">{error}</p>
-            <Link to="/" className="btn btn-secondary" style={{ marginTop: 16 }}>Back to Home</Link>
-        </div>
-    );
+    if (loading) return <SkeletonLoader type="detail" />;
     if (!product) return null;
 
-    const price = product.specialPrice > 0 ? product.specialPrice : product.price;
-    const discountPct = product.discount > 0 ? Math.round(product.discount) : 0;
-    const avgRating = reviews.length > 0
-        ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
-        : null;
+    const originalPrice = product.price || 0;
+    const currentPrice = product.specialPrice || originalPrice;
+    const discount = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
+
+    const gallery = [
+        product.imageUrl || product.image,
+        'https://picsum.photos/seed/a1/800/800',
+        'https://picsum.photos/seed/a2/800/800',
+        'https://picsum.photos/seed/a3/800/800'
+    ];
 
     return (
-        <div className="container" style={{ padding: '32px 0' }}>
-            {/* Toast */}
-            {toast && (
-                <div className={`alert ${toast.type === 'error' ? 'alert-error' : 'alert-success'}`}
-                    style={{ position: 'fixed', top: 80, right: 24, zIndex: 999, maxWidth: 320, animation: 'fadeInUp .3s ease' }}>
-                    {toast.msg}
-                </div>
-            )}
-
-            <Link to="/" id="back-to-home" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--secondary)', marginBottom: 24, fontSize: '0.875rem' }}>
-                <ArrowLeft size={16} /> Back to products
-            </Link>
-
-            <div className="product-detail-layout">
-                {/* Image */}
-                <div className="product-detail-img-wrap">
-                    <img
-                        src={product.image ? `/api/images/${product.image}` : 'https://placehold.co/500x500/f8fafc/94a3b8?text=No+Image'}
-                        alt={product.productName}
-                        className="product-detail-img"
-                        id="product-main-image"
-                    />
-                </div>
-
-                {/* Info */}
-                <div className="product-detail-info">
-                    <h1 id="product-name" style={{ fontSize: '1.7rem', fontWeight: 700, lineHeight: 1.3, marginBottom: 12 }}>{product.productName}</h1>
-
-                    {/* Rating summary */}
-                    {avgRating && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                            <StarRating rating={Math.round(avgRating)} />
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                {avgRating} ({reviews.length} review{reviews.length !== 1 ? 's' : ''})
-                            </span>
-                        </div>
-                    )}
-
-                    <div className="divider" />
-
-                    {/* Price */}
-                    <div style={{ marginBottom: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                            <span id="product-price" style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                                ₹{price.toFixed(2)}
-                            </span>
-                            {discountPct > 0 && (
-                                <>
-                                    <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                                        ₹{product.price.toFixed(2)}
-                                    </span>
-                                    <span className="badge badge-success" id="discount-badge">-{discountPct}% off</span>
-                                </>
-                            )}
-                        </div>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>Inclusive of all taxes</p>
-                    </div>
-
-                    <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 24, fontSize: '0.95rem' }}>
-                        {product.description}
-                    </p>
-
-                    {/* Stock */}
-                    <div style={{ marginBottom: 20 }}>
-                        {product.quantity > 0
-                            ? <span className="badge badge-success" id="stock-badge">✓ In Stock ({product.quantity} available)</span>
-                            : <span className="badge badge-danger">Out of Stock</span>}
-                    </div>
-
-                    {/* Quantity */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Qty:</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                            <button id="qty-minus" onClick={() => setQuantity(q => Math.max(1, q - 1))} style={{ padding: '8px 14px', background: 'var(--surface-3)', fontSize: '1rem', borderRight: '1px solid var(--border)' }}>−</button>
-                            <span id="qty-value" style={{ padding: '8px 18px', fontWeight: 600 }}>{quantity}</span>
-                            <button id="qty-plus" onClick={() => setQuantity(q => Math.min(product.quantity || 10, q + 1))} style={{ padding: '8px 14px', background: 'var(--surface-3)', fontSize: '1rem', borderLeft: '1px solid var(--border)' }}>+</button>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-                        <button id="add-to-cart-btn" className="btn btn-primary" style={{ flex: 1 }} onClick={handleAddToCart} disabled={adding || product.quantity === 0}>
-                            <ShoppingCart size={16} />
-                            {adding ? 'Adding…' : 'Add to Cart'}
-                        </button>
-                        <button id="buy-now-btn" className="btn btn-secondary" style={{ flex: 1 }} onClick={handleBuyNow} disabled={adding || product.quantity === 0}>
-                            Buy Now
-                        </button>
-                        <button
-                            id="wishlist-toggle-btn"
-                            onClick={handleWishlist}
-                            style={{
-                                width: 46, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)',
-                                background: wishlisted ? '#fee2e2' : 'var(--surface-3)',
-                                transition: 'all .2s',
-                            }}
-                        >
-                            <Heart size={20} fill={wishlisted ? '#ef4444' : 'none'} color={wishlisted ? '#ef4444' : '#64748b'} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Reviews section */}
-            <div style={{ marginTop: 56 }}>
-                <div className="section-header">
-                    <h2 className="section-title">Customer Reviews</h2>
-                    {reviews.length > 0 && (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
-                    )}
-                </div>
-
-                {/* Write review */}
-                {user && (
-                    <div className="card" style={{ padding: 24, marginBottom: 28 }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Write a Review</h3>
-                        <form onSubmit={handleReviewSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            <div>
-                                <label style={{ fontSize: '0.875rem', fontWeight: 500, display: 'block', marginBottom: 8 }}>Your Rating</label>
-                                <StarInput value={rating} onChange={setRating} />
-                            </div>
-                            <div className="form-group">
-                                <label>Your Review</label>
-                                <textarea
-                                    id="review-comment"
-                                    className="form-control"
-                                    rows={3}
-                                    placeholder="Share your experience with this product…"
-                                    value={comment}
-                                    onChange={e => setComment(e.target.value)}
-                                    style={{ resize: 'vertical' }}
-                                />
-                            </div>
-                            <div>
-                                <button id="submit-review-btn" type="submit" className="btn btn-secondary" disabled={submittingReview}>
-                                    <Send size={14} /> {submittingReview ? 'Submitting…' : 'Submit Review'}
+        <div style={{ background: '#fff', padding: '150px 0 80px' }}>
+            <div className="container">
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 0.7fr)', gap: 80 }}>
+                    
+                    {/* ── IMAGE GALLERY (AJIO STYLE GRID/THUMBS) ── */}
+                    <div style={{ display: 'flex', gap: 20 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {gallery.map((img, i) => (
+                                <button key={i} onClick={() => setSelectedImg(i)} style={{ width: 70, height: 90, border: selectedImg === i ? '1px solid #111' : '1px solid #eee', overflow: 'hidden' }}>
+                                    <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.src='https://picsum.photos/seed/t/70/90'} />
                                 </button>
-                            </div>
-                        </form>
+                            ))}
+                        </div>
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <img src={gallery[selectedImg]} style={{ width: '100%', height: 750, objectFit: 'cover' }} onError={e => e.target.src='https://picsum.photos/seed/main/800/800'} />
+                        </div>
                     </div>
-                )}
 
-                {/* Review list */}
-                {reviews.length === 0 ? (
-                    <div className="empty-state">
-                        <Star size={48} />
-                        <h3>No reviews yet</h3>
-                        <p>Be the first to review this product!</p>
-                    </div>
-                ) : (
-                    <div className="card" style={{ padding: '8px 24px' }}>
-                        {reviews.map(r => (
-                            <div key={r.reviewId} className="review-item">
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--secondary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' }}>
-                                            {r.username?.[0]?.toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <p className="review-author">{r.username}</p>
-                                            <StarRating rating={r.rating} />
-                                        </div>
-                                    </div>
-                                    <span className="review-date">{new Date(r.reviewDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                                </div>
-                                <p className="review-comment">{r.comment}</p>
+                    {/* ── PRODUCT CONTENT (AJIO DENSITY) ── */}
+                    <div>
+                        <div style={{ marginBottom: 30 }}>
+                            <h4 style={{ fontSize: 16, fontWeight: 800, color: '#333', textTransform: 'uppercase', marginBottom: 12 }}>{product.category?.categoryName || 'Indie Brand'}</h4>
+                            <h1 style={{ fontSize: 24, fontWeight: 400, color: '#666', marginBottom: 16 }}>{product.productName}</h1>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, marginBottom: 24, border: '1px solid #ffba00', padding: '4px 10px', borderRadius: 40, width: 'fit-content', background: '#fff8e1' }}>
+                                 4.2 <Star size={12} fill="#ffba00" color="#ffba00" /> <span style={{ color: '#999', borderLeft: '1px solid #ddd', paddingLeft: 6 }}>128 Ratings</span>
                             </div>
-                        ))}
+
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
+                                <span style={{ fontSize: 24, fontWeight: 800 }}>₹{currentPrice}</span>
+                                {discount > 0 && (
+                                    <>
+                                        <span style={{ fontSize: 16, color: '#999', textDecoration: 'line-through' }}>MRP ₹{originalPrice}</span>
+                                        <span style={{ fontSize: 16, fontWeight: 800, color: '#ff905a' }}>({discount}% OFF)</span>
+                                    </>
+                                )}
+                            </div>
+                            <p style={{ fontSize: 11, color: '#31b147', fontWeight: 800 }}>Price inclusive of all taxes</p>
+                        </div>
+
+                        {/* OFFERS (AJIO STYLE) */}
+                        <div style={{ border: '1px dashed #ddd', padding: 20, borderRadius: 8, marginBottom: 40, background: '#f9fafb' }}>
+                            <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Percent size={14} color="#ff905a" /> Applicable Offers
+                            </h4>
+                            <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <p>● Use Code: <b>AJIOMANIA</b> to get Flat 15% OFF (Min Order ₹2490)</p>
+                                <p>● Pay via Mobikwik to get up to 10% Cashback</p>
+                            </div>
+                        </div>
+
+                        {/* SIZE SELECTOR */}
+                        <div style={{ marginBottom: 40 }}>
+                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                                 <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase' }}>Select Size</h4>
+                                 <button style={{ fontSize: 11, fontWeight: 700, color: '#111' }}>SIZE CHART</button>
+                             </div>
+                             <div style={{ display: 'flex', gap: 12 }}>
+                                 {['S', 'M', 'L', 'XL'].map(s => (
+                                     <button 
+                                        key={s} 
+                                        onClick={() => setSelectedSize(s)}
+                                        style={{ width: 50, height: 50, borderRadius: '50%', border: selectedSize === s ? '2px solid #111' : '1px solid #ddd', background: selectedSize === s ? '#111' : '#fff', color: selectedSize === s ? '#fff' : '#111', fontSize: 13, fontWeight: 700, transition: '0.2s' }}
+                                     >
+                                         {s}
+                                     </button>
+                                 ))}
+                             </div>
+                        </div>
+
+                        {/* CTA */}
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 60 }}>
+                            <button onClick={handleAddToCart} style={{ flex: 1, height: 56, background: '#111', color: '#fff', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, disabled: adding }}>
+                                {adding ? 'Processing...' : 'Add to Bag'}
+                            </button>
+                            <button 
+                                onClick={() => { if(!user) navigate('/login'); else (wishlisted ? removeFromWishlist(id) : addToWishlist(id)) }}
+                                style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #111', color: wishlisted ? '#ff4081' : '#111' }}
+                            >
+                                <Heart size={20} fill={wishlisted ? '#ff4081' : 'none'} />
+                            </button>
+                        </div>
+
+                        {/* DETAILS (EXPANDABLE STYLE) */}
+                        <div style={{ borderTop: '1px solid #eee', paddingTop: 24 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase' }}>Product Details</h4>
+                                <ChevronDown size={14} />
+                            </div>
+                            <p style={{ fontSize: 13, color: '#666', lineHeight: 1.6 }}>{product.description}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* RELATED PRODUCTS */}
+                {related.length > 0 && (
+                    <div style={{ marginTop: 100, borderTop: '1px solid #eee', paddingTop: 60 }}>
+                        <h2 style={{ fontSize: 22, fontWeight: 800, textTransform: 'uppercase', marginBottom: 40 }}>Customers Also Liked</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+                            {related.map(p => <ProductCard key={p.productId} product={p} />)}
+                        </div>
                     </div>
                 )}
             </div>
+
+            {/* TOAST PANEL */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="toast-ajio">
+                       <Check size={18} /> {toast}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

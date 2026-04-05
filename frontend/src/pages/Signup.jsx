@@ -27,16 +27,15 @@ const Signup = () => {
     return (
         <div className="auth-page">
             <div className="auth-card animate-in">
-                <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
-                    <ShoppingBag size={24} color="#f59e0b" />
-                    <span className="auth-logo" style={{ margin: 0 }}>Gusto</span>
+                <Link to="/" className="auth-logo">
+                    GUSTO
                 </Link>
-                <h1 className="auth-title">Create account</h1>
-                <p className="auth-sub">Join millions of happy Gusto customers</p>
+                <h1 className="auth-title">Create Account</h1>
+                <p className="auth-sub">Join the Gusto community</p>
 
                 {error && <div className="alert alert-error" id="signup-error">{error}</div>}
 
-                <form onSubmit={handleSubmit} id="signup-form" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <form onSubmit={handleSubmit} id="signup-form">
                     <div className="form-group">
                         <label htmlFor="signup-username">Username</label>
                         <input
@@ -58,7 +57,7 @@ const Signup = () => {
                             type="email"
                             name="email"
                             className="form-control"
-                            placeholder="your@email.com"
+                            placeholder="Email address"
                             value={userData.email}
                             onChange={handleChange}
                             required
@@ -72,7 +71,7 @@ const Signup = () => {
                                 type={showPwd ? 'text' : 'password'}
                                 name="password"
                                 className="form-control"
-                                placeholder="At least 6 characters"
+                                placeholder="Password (min. 6 characters)"
                                 value={userData.password}
                                 onChange={handleChange}
                                 required
@@ -82,7 +81,13 @@ const Signup = () => {
                                 type="button"
                                 id="toggle-signup-password"
                                 onClick={() => setShowPwd(v => !v)}
-                                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', color: 'var(--text-muted)' }}
+                                style={{ 
+                                    position: 'absolute', 
+                                    right: 12, 
+                                    top: '50%', 
+                                    transform: 'translateY(-50%)', 
+                                    color: '#666'
+                                }}
                             >
                                 {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
@@ -91,18 +96,20 @@ const Signup = () => {
                     <button
                         id="signup-submit"
                         type="submit"
-                        className="btn btn-secondary"
-                        style={{ width: '100%', marginTop: 4, padding: '12px' }}
+                        className="btn-ajio"
+                        style={{ width: '100%', marginTop: '12px', border: 'none', cursor: 'pointer' }}
                         disabled={loading}
                     >
-                        {loading ? 'Creating account…' : 'Create Account'}
+                        {loading ? 'CREATING ACCOUNT...' : 'REGISTER'}
                     </button>
                 </form>
 
-                <p style={{ textAlign: 'center', marginTop: 20, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    Already have an account?{' '}
-                    <Link to="/login" id="goto-login" style={{ color: 'var(--secondary)', fontWeight: 500 }}>Sign in</Link>
-                </p>
+                <div style={{ textAlign: 'center', marginTop: 32, fontSize: '13px' }}>
+                    <span className="text-muted">Already have an account?</span>{' '}
+                    <Link to="/login" id="goto-login" style={{ color: '#000', fontWeight: 700, borderBottom: '1px solid #000' }}>
+                        Login
+                    </Link>
+                </div>
             </div>
         </div>
     );

@@ -27,4 +27,5 @@ public interface ProductService {
     ProductResponse getNewArrivals(Integer pageSize);
 
     ProductResponse getProductDeals(Integer pageSize);
+    ProductResponse searchFilteredProducts(String keyword, Double minPrice, Double maxPrice, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 }

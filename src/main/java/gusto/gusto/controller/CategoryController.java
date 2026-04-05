@@ -25,10 +25,9 @@ CategoryService categoryService;
         return new ResponseEntity<>(k,HttpStatus.OK);
     }
     @PostMapping("/admin/add")
-    public ResponseEntity<CategoryDTO> addCategories(@Valid    @RequestBody CategoryDTO categoryDTO)
+    public ResponseEntity<CategoryDTO> addCategories(@Valid @RequestBody CategoryDTO categoryDTO)
     {
-        categoryService.createCategory(categoryDTO);
-        CategoryDTO savedCategory= categoryService.createCategory(categoryDTO);
+        CategoryDTO savedCategory = categoryService.createCategory(categoryDTO);
         return new ResponseEntity<>(savedCategory, HttpStatus.CREATED);
     }
     @PostMapping("/public/categories")

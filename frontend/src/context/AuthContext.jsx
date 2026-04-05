@@ -51,8 +51,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Role helpers
+    const isAdmin = user?.roles?.includes('ROLE_ADMIN') ?? false;
+    const isSeller = user?.roles?.includes('ROLE_SELLER') ?? false;
+
     return (
-        <AuthContext.Provider value={{ user, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, signup, logout, loading, isAdmin, isSeller }}>
             {children}
         </AuthContext.Provider>
     );

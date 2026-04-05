@@ -1,216 +1,155 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ProductCard from '../components/ProductCard';
-import { ArrowRight, Tag, TrendingUp, ShieldCheck } from 'lucide-react';
-
-
-
-import Carousel from '../components/Carousel';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, ShoppingBag, Globe, Zap, Gift, ChevronRight, TrendingUp, Sparkles, Percent } from 'lucide-react';
 
 const Home = () => {
     const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
     const [deals, setDeals] = useState([]);
-    const [newArrivals, setNewArrivals] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    // Timer for flash sale (mock)
-    const [timeLeft, setTimeLeft] = useState({ h: 12, m: 34, s: 56 });
+    // AJIO BANNERS (Simulated Carousel)
+    const [activeBanner, setActiveBanner] = useState(0);
+    const banners = [
+        "https://assets.ajio.com/cms/AJIO/WEB/D-1.0-UHP-21012024-Z11-Main-P1-Nike-Adidas-Min50.jpg", // Simulated AJIO URL style
+        "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=2012&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2070&auto=format&fit=crop"
+    ];
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev.s > 0) return { ...prev, s: prev.s - 1 };
-                if (prev.m > 0) return { ...prev, m: prev.m - 1, s: 59 };
-                if (prev.h > 0) return { ...prev, h: prev.h - 1, m: 59, s: 59 };
-                return prev;
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    useEffect(() => {
-        const fetchData = async () => {
+        const fetchAll = async () => {
+            setLoading(true);
             try {
-                // Fetch individually to avoid one failure blocking all
-                const fetchProducts = async () => {
-                    try {
-                        const res = await api.get('/public/products?pageSize=8');
-                        setProducts(res.data.content || []);
-                    } catch (e) { console.error('Products fetch error', e); }
-                };
-
-                const fetchCategories = async () => {
-                    try {
-                        const res = await api.get('/public/categories');
-                        setCategories(res.data.content || []);
-                    } catch (e) { console.error('Categories fetch error', e); }
-                };
-
-                const fetchDeals = async () => {
-                    try {
-                        const res = await api.get('/public/products/deals?pageSize=4');
-                        setDeals(res.data.content || []);
-                    } catch (e) { console.error('Deals fetch error', e); }
-                };
-
-                const fetchNew = async () => {
-                    try {
-                        const res = await api.get('/public/products/new?pageSize=4');
-                        setNewArrivals(res.data.content || []);
-                    } catch (e) { console.error('New Arrivals fetch error', e); }
-                };
-
-                await Promise.all([fetchProducts(), fetchCategories(), fetchDeals(), fetchNew()]);
-
-                // Only show global error if EVERYTHING failed (unlikely if backend is up)
-                // But we check if products failed as a baseline
+                const [prodRes, dealRes] = await Promise.all([
+                    api.get('/public/products?pageSize=12'),
+                    api.get('/public/products/deals?pageSize=8')
+                ]);
+                setProducts(prodRes.data.content || []);
+                setDeals(dealRes.data.content || []);
             } catch (err) {
-                console.error(err);
-                setError('Failed to load products. Make sure the backend is running.');
+                console.error("Home fetch error:", err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchData();
+        fetchAll();
+        const t = setInterval(() => setActiveBanner(prev => (prev + 1) % banners.length), 5000);
+        return () => clearInterval(t);
     }, []);
 
-    if (loading) return (
-        <div className="loading-wrapper">
-            <div className="spinner"></div>
-            <p>Gathering the best products for you…</p>
-        </div>
-    );
-
-    if (error) return (
-        <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
-            <p style={{ color: 'var(--danger)', fontSize: '1.2rem', marginBottom: 20 }}>{error}</p>
-            <button className="btn btn-secondary" onClick={() => window.location.reload()}>Retry</button>
-        </div>
-    );
-
     return (
-        <div className="home-page">
-            {/* ── Featured Carousel ────────────────────────────────── */}
-            <div className="container" style={{ paddingTop: 20 }}>
-                <Carousel />
-            </div>
-
-            <div className="container" style={{ paddingTop: 0 }}>
-                {/* ── Benefits ────────────────────────────────────────── */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: 24,
-                    marginBottom: 64,
-                    marginTop: -40,
-                    position: 'relative',
-                    zIndex: 20
-                }}>
-                    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="benefit-card" onClick={() => navigate('/search?keyword=')} style={{ cursor: 'pointer' }}>
-                        <div className="benefit-icon">🚚</div>
-                        <h4 style={{ marginBottom: 8, fontSize: '1.1rem' }}>Free Shipping</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Free express delivery on all orders above ₹999 within 2 days.</p>
-                    </motion.div>
-                    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="benefit-card" onClick={() => navigate('/search?keyword=')} style={{ cursor: 'pointer' }}>
-                        <div className="benefit-icon">🛡️</div>
-                        <h4 style={{ marginBottom: 8, fontSize: '1.1rem' }}>Secure Payment</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Advanced SSL encryption and trusted gateways for safe checkout.</p>
-                    </motion.div>
-                    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="benefit-card" onClick={() => navigate('/search?keyword=')} style={{ cursor: 'pointer' }}>
-                        <div className="benefit-icon">💫</div>
-                        <h4 style={{ marginBottom: 8, fontSize: '1.1rem' }}>Premium Quality</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Every product is handpicked and verified by our quality experts.</p>
-                    </motion.div>
+        <div style={{ background: '#fff', paddingTop: 110 }}>
+            {/* ── AJIO BANNER CAROUSEL ── */}
+            <section style={{ position: 'relative', height: 480, overflow: 'hidden', background: '#f5f5f5' }}>
+                <AnimatePresence mode='wait'>
+                    <motion.img 
+                        key={activeBanner} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        src={banners[activeBanner]} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => e.target.src='https://picsum.photos/seed/h1/1920/480'}
+                    />
+                </AnimatePresence>
+                <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 10 }}>
+                    {banners.map((_, i) => (
+                        <div key={i} onClick={() => setActiveBanner(i)} style={{ width: 40, height: 4, background: activeBanner === i ? '#2C4152' : '#ccc', cursor: 'pointer', transition: '0.3s' }} />
+                    ))}
                 </div>
+            </section>
 
-                {/* ── Flash Deals ─────────────────────────────────────── */}
-                {deals.length > 0 && (
-                    <section id="flash-deals" style={{ marginBottom: 64 }}>
-                        <div className="deal-card" onClick={() => navigate('/search?keyword=sale')} style={{ cursor: 'pointer' }}>
-                            <div>
-                                <span className="badge badge-warning" style={{ color: '#92400e', background: '#fef3c7', marginBottom: 12 }}>Limited Time Offer</span>
-                                <h2 style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)' }}>Flash Sale is Live! ⚡</h2>
-                                <p style={{ opacity: .9, marginTop: 8 }}>Get up to 60% off on your favorite electronics and fashion items.</p>
+            {/* ── CATEGORY CHIPS: AJIO DENSITY ── */}
+            <section className="container" style={{ margin: '40px auto' }}>
+                <div style={{ display: 'flex', gap: 15, overflowX: 'auto', paddingBottom: 10 }}>
+                    {['Men', 'Women', 'Kids', 'Accessories', 'Gifts', 'Sale'].map(c => (
+                        <button key={c} onClick={() => navigate(`/search?keyword=${c}`)} className="chip">{c}</button>
+                    ))}
+                </div>
+            </section>
 
-                                <div className="timer-container">
-                                    <div className="timer-box"><span className="timer-val">{String(timeLeft.h).padStart(2, '0')}</span><span className="timer-label">Hrs</span></div>
-                                    <div className="timer-box"><span className="timer-val">{String(timeLeft.m).padStart(2, '0')}</span><span className="timer-label">Min</span></div>
-                                    <div className="timer-box"><span className="timer-val">{String(timeLeft.s).padStart(2, '0')}</span><span className="timer-label">Sec</span></div>
-                                </div>
-                            </div>
-                            <button className="btn btn-primary" style={{ background: '#fff', color: '#ef4444', padding: '14px 32px' }}>
-                                Shop Now
-                            </button>
-                        </div>
+            {/* ── DEAL OF THE DAY (AJIO STYLE BANNER) ── */}
+            <section className="container" style={{ marginBottom: 60 }}>
+                <div style={{ background: '#ffeadb', padding: '30px 40px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <p style={{ color: '#d32f2f', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Zap size={16} fill="#d32f2f" /> DEAL OF THE DAY
+                        </p>
+                        <h2 style={{ fontSize: 28, color: '#333' }}>Save up to 70% on New Season</h2>
+                        <p style={{ color: '#555', marginTop: 8 }}>Available for selected items only. Limited period offer.</p>
+                    </div>
+                    <button onClick={() => navigate('/search')} className="btn-ajio">SHOP NOW</button>
+                </div>
+            </section>
 
-                        <div className="product-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-                            {deals.map((p, i) => (
-                                <motion.div key={p.productId} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} viewport={{ once: true }}>
-                                    <ProductCard product={p} />
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+            {/* ── TRENDING: Dense Grid (4 Cols) ── */}
+            <section className="section container" style={{ paddingTop: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+                    <TrendingUp size={24} style={{ color: '#111' }} />
+                    <h2 style={{ fontSize: 22, textTransform: 'uppercase', letterSpacing: 0.5 }}>Trending Now</h2>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+                    {loading ? (
+                        [...Array(4)].map((_, i) => <SkeletonLoader key={i} />)
+                    ) : (
+                        products.map(prod => <ProductCard key={prod.productId} product={prod} />)
+                    )}
+                </div>
+            </section>
 
-                {/* ── Categories ────────────────────────────────────── */}
-                {categories.length > 0 && (
-                    <section style={{ marginBottom: 64 }}>
-                        <div className="section-header">
-                            <h2 className="section-title">Global Categories</h2>
-                            <Link to="/search?keyword=" style={{ color: 'var(--secondary)', fontWeight: 600, fontSize: '0.9rem' }}>See All →</Link>
-                        </div>
-                        <div className="category-grid">
-                            {categories.slice(0, 4).map((cat, i) => (
-                                <div key={cat.categoryId} className="category-card" onClick={() => navigate(`/search?keyword=${cat.categoryName}`)}>
-                                    <img src={`https://images.unsplash.com/photo-${1500000000000 + i * 10000}?auto=format&fit=crop&w=600&q=80`} alt={cat.categoryName} className="category-card-img" />
-                                    <div className="category-card-body">
-                                        <h3>{cat.categoryName}</h3>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 12 }}>Explore premium {cat.categoryName.toLowerCase()} products selected for you.</p>
-                                        <span style={{ fontWeight: 600, color: 'var(--secondary)', fontSize: '0.85rem' }}>Browse Now</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+            {/* ── SECONDARY PROMO BAR ── */}
+            <section style={{ background: '#2C4152', padding: '15px 0', margin: '40px 0' }}>
+               <div className="container" style={{ display: 'flex', justifyContent: 'space-around', color: '#fff', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Percent size={14} /> Get EXTRA 10% Off on ₹2990+</span>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Gift size={14} /> Free Gift on Your First Purchase</span>
+               </div>
+            </section>
 
-                {/* ── New Arrivals ───────────────────────────────────── */}
-                {newArrivals.length > 0 && (
-                    <section style={{ marginBottom: 64 }}>
-                        <div className="section-header">
-                            <h2 className="section-title">New Arrivals</h2>
-                            <p className="text-muted" style={{ fontSize: '0.9rem' }}>Just added to our catalog</p>
-                        </div>
-                        <div className="product-grid">
-                            {newArrivals.map((p, i) => (
-                                <div key={p.productId} style={{ position: 'relative' }}>
-                                    <span className="badge-new">NEW</span>
-                                    <ProductCard product={p} />
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+            {/* ── DEALS SECTION ── */}
+            <section className="section container" style={{ paddingTop: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+                    <Sparkles size={24} style={{ color: '#111' }} />
+                    <h2 style={{ fontSize: 22, textTransform: 'uppercase', letterSpacing: 0.5 }}>Best Sellers</h2>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+                    {loading ? (
+                        [...Array(4)].map((_, i) => <SkeletonLoader key={i} />)
+                    ) : (
+                        deals.map(prod => <ProductCard key={prod.productId} product={prod} />)
+                    )}
+                </div>
+            </section>
 
-                {/* ── Newsletter ───────────────────────────────────────── */}
-                <section className="newsletter animate-in">
-                    <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-                        <h2>Join the Gusto Family</h2>
-                        <p>Subscribe to our newsletter and get 10% off your first order plus exclusive early access to major sales.</p>
-                        <form className="newsletter-form" onSubmit={(e) => { e.preventDefault(); alert("Thanks for subscribing!"); }}>
-                            <input className="form-control" type="email" placeholder="Enter your email address" style={{ height: 50, border: 'none' }} required />
-                            <button className="btn btn-secondary" style={{ padding: '0 32px' }}>Subscribe</button>
-                        </form>
-                        <p style={{ marginTop: 24, fontSize: '0.75rem', opacity: .6 }}>By subscribing, you agree to our Privacy Policy and Terms of Service.</p>
-                    </motion.div>
-                </section>
-            </div>
+            {/* ── FOOTER: Content Heavy ── */}
+            <footer style={{ background: '#F9FAFB', padding: '60px 0 40px', borderTop: '1px solid #eee' }}>
+                <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40 }}>
+                    <div>
+                        <h4 style={{ marginBottom: 24, fontSize: 13, textTransform: 'uppercase', color: '#333' }}>GUSTO ONLINE</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, color: '#666' }}>
+                            <Link to="/search">Gusto Luxury</Link>
+                            <Link to="/search">Registry</Link>
+                            <Link to="/profile">Joining Bonus</Link>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style={{ marginBottom: 24, fontSize: 13, textTransform: 'uppercase', color: '#333' }}>SERVICE</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, color: '#666' }}>
+                             <a href="#">Order Tracking</a>
+                             <a href="#">Returns & Returns</a>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style={{ marginBottom: 24, fontSize: 13, textTransform: 'uppercase', color: '#333' }}>EXPERIENCE GUSTO APP</h4>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                           <div style={{ background: '#eee', padding: '8px 12px', fontSize: 10, borderRadius: 4, textAlign: 'center' }}>GOOGLE PLAY</div>
+                           <div style={{ background: '#eee', padding: '8px 12px', fontSize: 10, borderRadius: 4, textAlign: 'center' }}>APP STORE</div>
+                        </div>
+                    </div>
+                </div>
+                <div className="container" style={{ marginTop: 60, paddingTop: 40, borderTop: '1px solid #eee', fontSize: 11, color: '#999', textAlign: 'center' }}>
+                    <p>© 2026 GUSTO GLOBAL. INDIA'S PREMIUM FASHION DESTINATION.</p>
+                </div>
+            </footer>
         </div>
     );
 };

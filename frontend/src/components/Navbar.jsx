@@ -1,169 +1,125 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Search, ShoppingCart, Heart, User as UserIcon, ChevronDown, Menu, X } from 'lucide-react';
+import { ShoppingBag, Search as SearchIcon, User as UserIcon, LogOut, Package, Shield, Settings, ChevronDown, Heart, Store } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import api from '../services/api';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = () => {
-    const { user, logout } = useAuth();
-    const { cart, fetchCart, clearCart } = useCart();
-    const [searchTerm, setSearchTerm] = useState('');
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const [accountOpen, setAccountOpen] = useState(false);
-    const accountRef = useRef(null);
+    const { user, logout, isAdmin } = useAuth();
+    const { cartCount } = useCart();
     const navigate = useNavigate();
+    
+    const [searchKeyword, setSearchKeyword] = useState('');
+    const [scrolled, setScrolled] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const [suggestions, setSuggestions] = useState([]);
+    
+    const menuRef = useRef(null);
+    const searchRef = useRef(null);
 
     useEffect(() => {
-        if (user) fetchCart();
-        else clearCart();
-    }, [user, fetchCart, clearCart]);
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (accountRef.current && !accountRef.current.contains(e.target)) {
-                setAccountOpen(false);
-            }
+            if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        if (searchTerm.trim()) {
-            navigate(`/search?keyword=${encodeURIComponent(searchTerm)}`);
-            setMobileOpen(false);
-        }
+    const fetchSuggestions = async (kw) => {
+        if (!kw.trim() || kw.length < 2) { setSuggestions([]); return; }
+        try {
+            const res = await api.get(`/public/products/keyword/${kw}?pageSize=5`);
+            setSuggestions(res.data.content || []);
+        } catch {}
     };
 
-    const handleLogout = async () => {
-        await logout();
-        clearCart();
-        setAccountOpen(false);
-        navigate('/login');
-    };
-
-    const cartCount = cart?.products?.reduce((acc, p) => acc + p.quantity, 0) || 0;
+    const handleSearchSubmit = (e) => { e.preventDefault(); if (searchKeyword.trim()) navigate(`/search?keyword=${searchKeyword}`); };
 
     return (
-        <nav className="navbar">
-            <div className="navbar-top container" style={{ maxWidth: '100%', padding: '12px 24px' }}>
-                {/* Logo */}
-                <Link to="/" className="logo" id="nav-logo">
-                    <ShoppingBag size={28} color="var(--secondary)" strokeWidth={2.5} />
-                    <span className="logo-text">Gus<span>to</span></span>
-                </Link>
+        <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, background: '#fff' }}>
+            {/* ── TOP UTILITY ── */}
+            <div style={{ background: '#2C4152', color: '#fff', fontSize: 10, padding: '8px 40px', display: 'flex', justifyContent: 'space-between', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>
+                <span>Free Delivery on orders above ₹799</span>
+                <div style={{ display: 'flex', gap: 24 }}>
+                    <Link to="/search">Gusto Luxury</Link>
+                    <Link to="/profile">Join Gusto Rewards</Link>
+                </div>
+            </div>
 
-                {/* Search */}
-                <form className="search-bar" onSubmit={handleSearch} id="search-form" style={{ margin: '0 20px', display: mobileOpen ? 'none' : 'flex' }}>
-                    <input
-                        id="search-input"
-                        type="text"
-                        className="search-input"
-                        placeholder="Search products, categories…"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                    <button type="submit" className="search-btn" id="search-submit-btn">
-                        <Search size={20} color="#0f172a" />
-                    </button>
-                </form>
+            {/* ── MAIN NAV ── */}
+            <nav style={{ height: 80, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', transition: '0.3s' }}>
+                <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 60, width: '100%' }}>
+                    
+                    {/* ── LOGO ── */}
+                    <Link to="/" style={{ color: '#2C4152', fontSize: 24, fontWeight: 800, letterSpacing: -1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Store size={28} /> GUSTO
+                    </Link>
 
-                {/* Right nav */}
-                <div className="nav-links">
-                    {/* Account dropdown */}
-                    <div ref={accountRef} style={{ position: 'relative' }}>
-                        <div
-                            className="nav-item"
-                            id="account-menu-btn"
-                            onClick={() => setAccountOpen(!accountOpen)}
-                        >
-                            <span className="nav-label">Hello, {user ? user.username : 'Sign in'}</span>
-                            <span className="nav-value" style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                Account <ChevronDown size={12} />
-                            </span>
-                        </div>
-                        {accountOpen && (
-                            <div id="account-dropdown" style={{
-                                position: 'absolute', top: '110%', right: 0,
-                                background: '#fff', borderRadius: '10px',
-                                boxShadow: '0 8px 32px rgba(0,0,0,.18)',
-                                border: '1px solid #e2e8f0',
-                                minWidth: '200px', zIndex: 200,
-                                overflow: 'hidden'
-                            }}>
-                                {user ? (
-                                    <>
-                                        <Link to="/profile" id="profile-link" onClick={() => setAccountOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', fontSize: '0.875rem', color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
-                                            <UserIcon size={15} /> My Profile
-                                        </Link>
-                                        <Link to="/wishlist" id="wishlist-link" onClick={() => setAccountOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', fontSize: '0.875rem', color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
-                                            <Heart size={15} /> Wishlist
-                                        </Link>
-                                        <button id="signout-btn" onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', fontSize: '0.875rem', color: '#ef4444', width: '100%', textAlign: 'left', background: 'none' }}>
-                                            Sign Out
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Link to="/login" id="signin-link" onClick={() => setAccountOpen(false)} style={{ display: 'block', padding: '12px 18px', fontSize: '0.875rem', color: '#1d4ed8', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>Sign In</Link>
-                                        <Link to="/signup" id="signup-link" onClick={() => setAccountOpen(false)} style={{ display: 'block', padding: '12px 18px', fontSize: '0.875rem', color: '#0f172a' }}>Create Account</Link>
-                                    </>
-                                )}
-                            </div>
-                        )}
+                    {/* ── AJIO CATEGORIES ── */}
+                    <div style={{ display: 'flex', gap: 32, fontSize: 13, fontWeight: 800, color: '#333', textTransform: 'uppercase' }}>
+                        <Link to="/search?keyword=Men">MEN</Link>
+                        <Link to="/search?keyword=Women">WOMEN</Link>
+                        <Link to="/search?keyword=Kids">KIDS</Link>
+                        <Link to="/search?keyword=Brands" style={{ color: '#ff4081' }}>INDIE</Link>
                     </div>
 
-                    {/* Wishlist */}
-                    <Link to="/wishlist" id="nav-wishlist" className="nav-item" style={{ alignItems: 'center' }}>
-                        <Heart size={22} color="var(--text-secondary)" />
-                    </Link>
+                    {/* ── SEARCH ── */}
+                    <div style={{ flex: 1, position: 'relative' }} ref={searchRef}>
+                        <form onSubmit={handleSearchSubmit} style={{ position: 'relative' }}>
+                            <input 
+                                value={searchKeyword} 
+                                onChange={(e) => { setSearchKeyword(e.target.value); fetchSuggestions(e.target.value); }}
+                                placeholder="Search GUSTO Archive..." 
+                                style={{ width: '100%', height: 44, background: '#F0F0F0', border: '1px solid #ddd', borderRadius: 40, padding: '0 50px 0 20px', fontSize: 13, outline: 'none' }}
+                            />
+                            <button style={{ position: 'absolute', right: 15, top: '50%', transform: 'translateY(-50%)', color: '#999' }}>
+                                <SearchIcon size={18} />
+                            </button>
+                        </form>
+                    </div>
 
-                    {/* Cart */}
-                    <Link to="/cart" id="nav-cart" className="nav-item cart-icon">
-                        <ShoppingCart size={24} />
-                        {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
-                        <span className="nav-value">Cart</span>
-                    </Link>
-
-                    {/* Mobile toggle */}
-                    <button className="btn-ghost" id="mobile-menu-btn" style={{ display: 'none', color: '#fff', padding: '6px' }} onClick={() => setMobileOpen(!mobileOpen)}>
-                        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-                    </button>
+                    {/* ── ACTIONS ── */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 32, color: '#2C4152' }}>
+                        <Link to="/wishlist" style={{ color: 'inherit' }} title="Wishlist"><Heart size={24} strokeWidth={1.5} /></Link>
+                        <Link to="/cart" style={{ position: 'relative', color: 'inherit' }} title="Bag">
+                            <ShoppingBag size={24} strokeWidth={1.5} />
+                            {cartCount > 0 && <span style={{ position: 'absolute', top: -6, right: -8, background: '#D93B3B', color: '#fff', fontSize: 10, fontWeight: 800, width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{cartCount}</span>}
+                        </Link>
+                        <div style={{ position: 'relative' }} ref={menuRef}>
+                            <button onClick={() => setShowMenu(!showMenu)} style={{ color: 'inherit' }}><UserIcon size={24} strokeWidth={1.5} /></button>
+                            <AnimatePresence>
+                                {showMenu && (
+                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', top: '100%', right: -10, marginTop: 12, width: 220, background: '#fff', border: '1px solid #eee', borderRadius: 8, zIndex: 3000, boxShadow: '0 10px 40px rgba(0,0,0,0.1)', padding: '12px 0' }}>
+                                        {user ? (
+                                            <>
+                                                <div style={{ padding: '8px 24px 16px', borderBottom: '1px solid #eee', marginBottom: 8 }}><p style={{ fontSize: 12, fontWeight: 700, color: '#333' }}>Hello {user.username}</p></div>
+                                                <Link to="/profile" onClick={() => setShowMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 24px', fontSize: 13, color: '#555' }}><Package size={16} /> My Orders</Link>
+                                                <Link to="/wishlist" onClick={() => setShowMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 24px', fontSize: 13, color: '#555' }}><Heart size={16} /> Wishlist</Link>
+                                                <div style={{ height: 1, background: '#eee', margin: '8px 0' }} />
+                                                <button onClick={() => { logout(); setShowMenu(false); navigate('/login'); }} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 24px', fontSize: 13, color: '#D93B3B' }}>Sign Out</button>
+                                            </>
+                                        ) : (
+                                            <div style={{ padding: '8px 16px' }}>
+                                                <button onClick={() => navigate('/login')} style={{ width: '100%', height: 40, background: '#2C4152', color: '#fff', fontSize: 12, fontWeight: 800, borderRadius: 4 }}>SIGN IN</button>
+                                                <Link to="/signup" onClick={() => setShowMenu(false)} style={{ display: 'block', textAlign: 'center', fontSize: 11, color: '#999', marginTop: 12 }}>New to Gusto? Join Now</Link>
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            {/* Bottom nav strip */}
-            <div className="navbar-bottom">
-                <Link to="/" id="nav-home">🏠 Home</Link>
-                <Link to="/search?keyword=electronics" id="nav-electronics">Electronics</Link>
-                <Link to="/search?keyword=fashion" id="nav-fashion">Fashion</Link>
-                <Link to="/search?keyword=books" id="nav-books">Books</Link>
-                <Link to="/search?keyword=sports" id="nav-sports">Sports</Link>
-                <Link to="/search?keyword=home" id="nav-home-decor">Home & Garden</Link>
-                {user && <Link to="/profile" id="nav-orders">📦 My Orders</Link>}
-            </div>
-
-            {/* Mobile Navigation Tray */}
-            {mobileOpen && (
-                <div className="mobile-nav-tray" id="mobile-nav">
-                    <button onClick={() => setMobileOpen(false)} style={{ position: 'absolute', top: 20, right: 24, background: 'none' }}>
-                        <X size={30} color="#0f172a" />
-                    </button>
-                    <Link to="/" onClick={() => setMobileOpen(false)}>Home</Link>
-                    <Link to="/search?keyword=electronics" onClick={() => setMobileOpen(false)}>Electronics</Link>
-                    <Link to="/search?keyword=fashion" onClick={() => setMobileOpen(false)}>Fashion</Link>
-                    <Link to="/search?keyword=books" onClick={() => setMobileOpen(false)}>Books</Link>
-                    <Link to="/search?keyword=sports" onClick={() => setMobileOpen(false)}>Sports</Link>
-                    <Link to="/cart" onClick={() => setMobileOpen(false)}>My Cart</Link>
-                    {user ? (
-                        <Link to="/profile" onClick={() => setMobileOpen(false)}>My Profile</Link>
-                    ) : (
-                        <Link to="/login" onClick={() => setMobileOpen(false)}>Sign In</Link>
-                    )}
-                </div>
-            )}
-        </nav>
+            </nav>
+        </header>
     );
 };
 

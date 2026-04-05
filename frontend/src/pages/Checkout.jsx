@@ -16,6 +16,10 @@ const Checkout = () => {
     const [paymentMethod, setPaymentMethod] = useState('UPI');
     const [loading, setLoading] = useState(false);
     const [orderDone, setOrderDone] = useState(null);
+    const [showAddressForm, setShowAddressForm] = useState(false);
+    const [newAddress, setNewAddress] = useState({
+        buildingName: '', street: '', city: '', state: '', country: '', pincode: ''
+    });
 
     useEffect(() => {
         if (!user) {
@@ -57,6 +61,20 @@ const Checkout = () => {
             alert("Failed to place order. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAddAddress = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await api.post('/addresses', newAddress);
+            setAddresses([...addresses, res.data]);
+            setSelectedAddress(res.data.addressId);
+            setShowAddressForm(false);
+            setNewAddress({ buildingName: '', street: '', city: '', state: '', country: '', pincode: '' });
+        } catch (err) {
+            console.error("Error adding address:", err);
+            alert("Failed to add address.");
         }
     };
 
@@ -110,8 +128,24 @@ const Checkout = () => {
                         <div className="card animate-in" style={{ padding: 24 }}>
                             <div className="section-header">
                                 <h2 className="section-title">Select Delivery Address</h2>
-                                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>+ Add New</button>
+                                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setShowAddressForm(!showAddressForm)}>
+                                    {showAddressForm ? 'Cancel' : '+ Add New'}
+                                </button>
                             </div>
+                            
+                            {showAddressForm && (
+                                <form onSubmit={handleAddAddress} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24, padding: 16, background: 'var(--surface-2)', borderRadius: 8 }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <input className="form-control" placeholder="House/Building Name" required value={newAddress.buildingName} onChange={e => setNewAddress({...newAddress, buildingName: e.target.value})} />
+                                        <input className="form-control" placeholder="Street/Locality" required value={newAddress.street} onChange={e => setNewAddress({...newAddress, street: e.target.value})} />
+                                        <input className="form-control" placeholder="City" required value={newAddress.city} onChange={e => setNewAddress({...newAddress, city: e.target.value})} />
+                                        <input className="form-control" placeholder="State" required value={newAddress.state} onChange={e => setNewAddress({...newAddress, state: e.target.value})} />
+                                        <input className="form-control" placeholder="Country" required value={newAddress.country} onChange={e => setNewAddress({...newAddress, country: e.target.value})} />
+                                        <input className="form-control" placeholder="Pincode" required value={newAddress.pincode} onChange={e => setNewAddress({...newAddress, pincode: e.target.value})} />
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>Save Address</button>
+                                </form>
+                            )}
                             
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16, marginTop: 20 }}>
                                 {addresses.map(addr => (
@@ -211,7 +245,16 @@ const Checkout = () => {
                             <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 16 }}>Items in your order</h4>
                             {cart.products.map(item => (
                                 <div key={item.productId} style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
-                                    <img src={item.image ? `/api/images/${item.image}` : 'https://placehold.co/50x50'} style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                                    <img 
+                                        src={
+                                            item.image?.startsWith('http') 
+                                            ? (item.image.includes('unsplash') ? `https://picsum.photos/seed/${item.productId || 123}/50/50` : item.image) 
+                                            : `/api/images/${item.image || 'placeholder.jpg'}`
+                                        } 
+                                        style={{ width: 40, height: 40, objectFit: 'contain' }} 
+                                        alt={item.productName}
+                                        onError={(e) => { e.target.onerror = null; e.target.src = `https://picsum.photos/seed/${item.productId || 404}/50/50`; }}
+                                    />
                                     <div style={{ flex: 1 }}>
                                         <p style={{ fontSize: '0.875rem' }}>{item.productName}</p>
                                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</p>
