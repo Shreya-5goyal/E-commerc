@@ -48,6 +48,98 @@ public class Product {
     @JoinColumn(name = "category_id")
     private category category;
 
+    public void setBrand(String brand) {
+        this.brand = brand;
+    }
+
+    public gusto.gusto.model.category getCategory() {
+        return category;
+    }
+
+    public void setCategory(gusto.gusto.model.category category) {
+        this.category = category;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setDiscount(double discount) {
+        this.discount = discount;
+    }
+
+    public List<ProductImage> getGallery() {
+        return gallery;
+    }
+
+    public void setGallery(List<ProductImage> gallery) {
+        this.gallery = gallery;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public @NotBlank @Size(min = 3, message = "Product name must contain at least 3 characters") String getProductName() {
+        return productName;
+    }
+
+    public void setProductName(@NotBlank @Size(min = 3, message = "Product name must contain at least 3 characters") String productName) {
+        this.productName = productName;
+    }
+
+    public List<CartItem> getProducts() {
+        return products;
+    }
+
+    public void setProducts(List<CartItem> products) {
+        this.products = products;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public List<Review> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<Review> reviews) {
+        this.reviews = reviews;
+    }
+
+    public void setSpecialPrice(double specialPrice) {
+        this.specialPrice = specialPrice;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     @ManyToOne
     @JoinColumn(name="seller_id")
     private User user;
@@ -60,7 +152,25 @@ public class Product {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> gallery = new ArrayList<>();
+    public Integer getQuantity() {
+        return quantity;
+    }
 
+    public double getDiscount() {
+        return discount;
+    }
+
+    public double getSpecialPrice() {
+        return specialPrice;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
     // COMPATIBILITY SHIMS
     public String getImage() { return imageUrl; }
     public void setImage(String image) { this.imageUrl = image; }

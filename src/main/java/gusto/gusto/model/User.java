@@ -26,6 +26,20 @@ public class User {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public User(List<Address> addresses, Cart cart, String email, String password, Set<Product> products, List<Review> reviews, Set<Role> roles, Long userId, String userName, List<Product> wishlist) {
+        this.addresses = addresses;
+        this.cart = cart;
+        this.email = email;
+        this.password = password;
+        this.products = products;
+        this.reviews = reviews;
+        this.roles = roles;
+        this.userId = userId;
+        this.userName = userName;
+        this.wishlist = wishlist;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
